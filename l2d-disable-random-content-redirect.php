@@ -26,6 +26,39 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
+ * どの状態でリライトルールを作ったかを記録するオプションの名前.
+ *
+ * 値は 'disabled'(無効化した状態で作った)か 'enabled'(コアの挙動のまま作った).
+ * サイトごとに持つ. l2ddrcr_maybe_refresh_rules() が今の状態と比べて,
+ * 違えばルールを作り直す.
+ */
+const L2DDRCR_STATE_OPTION = 'l2ddrcr_rules_state';
+
+/**
+ * このプラグインで無効化するかを返す.
+ *
+ * 独自フィルター l2ddrcr_disable_random_redirect の値で決める.
+ * l2ddrcr_filter_enable() と l2ddrcr_maybe_refresh_rules() の両方で使うので, ここにまとめる.
+ *
+ * @return bool 無効化するなら true.
+ */
+function l2ddrcr_should_disable() {
+	/**
+	 * ランダムな投稿へのリダイレクトを無効化するかを絞り込む.
+	 *
+	 * サイト側で false を返すと, このプラグインは何もせず, コアの挙動に戻る.
+	 * 値を変えると, 次のアクセスでリライトルールが自動で作り直される
+	 * (l2ddrcr_maybe_refresh_rules()).
+	 *
+	 * リクエストによって変わる値(ログインしているか, 管理画面か など)を返してはいけない.
+	 * 値が変わるたびにルールを作り直すので, 毎回のアクセスで作り直しが起きてしまう.
+	 *
+	 * @param bool $disable 無効化するなら true. 既定は true.
+	 */
+	return (bool) apply_filters( 'l2ddrcr_disable_random_redirect', true );
+}
+
+/**
  * ランダムな投稿へのリダイレクトを有効にするかを返す.
  *
  * コアのフィルター wp_enable_random_content_redirect に登録する.
@@ -42,18 +75,7 @@ defined( 'ABSPATH' ) || exit;
  * @return bool 有効にするなら true.
  */
 function l2ddrcr_filter_enable( $enabled ) {
-	/**
-	 * ランダムな投稿へのリダイレクトを無効化するかを絞り込む.
-	 *
-	 * サイト側で false を返すと, このプラグインは何もせず, コアの挙動に戻る.
-	 * 値を変えたあとは, 管理画面の「設定 > パーマリンク」で保存して,
-	 * リライトルールを作り直す必要がある(ルールは rewrite_rules オプションに保存されているため).
-	 *
-	 * @param bool $disable 無効化するなら true. 既定は true.
-	 */
-	$disable = (bool) apply_filters( 'l2ddrcr_disable_random_redirect', true );
-
-	if ( $disable ) {
+	if ( l2ddrcr_should_disable() ) {
 		return false;
 	}
 
@@ -76,41 +98,143 @@ function l2ddrcr_is_supported() {
 }
 
 /**
- * 有効化したときに, リライトルールを作り直す.
+ * 必要なときだけ, リライトルールを作り直す.
  *
  * /random/ のルールは rewrite_rules オプションに保存されているので,
- * フィルターを付けただけでは消えない. ここで作り直して, ルールを消す.
+ * フィルターの値が変わっただけでは消えたり戻ったりしない.
+ * そこで, どの状態でルールを作ったかを L2DDRCR_STATE_OPTION に記録しておき,
+ * 今の状態と違えば作り直す. 次のような場面で効く.
  *
- * 有効化のときは, このファイルを読み込んでからフックが呼ばれるので,
- * 作り直す時点で l2ddrcr_filter_enable() は登録済み(wp-admin/includes/plugin.php の activate_plugin()).
- * .htaccess は変わらないので, ソフトフラッシュ(false)でよい.
+ * - 有効化した直後(記録が無い).
+ * - マルチサイトでネットワーク有効化したあとの各サイト(記録が無い).
+ * - 独自フィルター l2ddrcr_disable_random_redirect の値を変えたとき.
+ * - WordPress を 7.2 に上げたとき(7.2 未満では記録しないので, 記録が無い).
+ *
+ * ルールの中身(random=1 のルールがあるか)では判定しない. 他のプラグインが
+ * random_rewrite_rules フィルターで random のルールを空にしていると,
+ * 作り直しても食い違ったままになり, 毎回作り直してしまうため.
+ *
+ * wp_loaded で動かすのは, 投稿タイプやタクソノミーが init で登録し終わってから
+ * 作り直すため. flush_rules() も wp_loaded 前だと wp_loaded まで待つ作りになっている
+ * (class-wp-rewrite.php の flush_rules()). 同じリクエストのルーティング
+ * (WP::parse_request())はこのあとなので, 作り直したルールがすぐ使われる.
  *
  * @return void
  */
-function l2ddrcr_activate() {
-	// 7.2 未満には /random/ のルールが無いので, 作り直す必要がない.
+function l2ddrcr_maybe_refresh_rules() {
+	// 7.2 未満には /random/ のルールが無いので, 何もしない.
 	if ( ! l2ddrcr_is_supported() ) {
 		return;
 	}
 
+	$state = l2ddrcr_should_disable() ? 'disabled' : 'enabled';
+
+	if ( get_option( L2DDRCR_STATE_OPTION ) === $state ) {
+		return;
+	}
+
+	// .htaccess は変わらないので, ソフトフラッシュ(false)でよい.
 	flush_rewrite_rules( false );
+
+	// 作り直したあとで記録する. 記録はルールを作り直したかどうかに関係なく更新するので,
+	// ルールの中身が変わらない場合でも, 次のアクセスで作り直しが繰り返されることはない.
+	update_option( L2DDRCR_STATE_OPTION, $state );
+}
+add_action( 'wp_loaded', 'l2ddrcr_maybe_refresh_rules' );
+
+/**
+ * 1 つのサイトのリライトルールと記録を消す.
+ *
+ * ルールは, そのサイトへの次のアクセスで作り直される
+ * (class-wp-rewrite.php の wp_rewrite_rules() は, rewrite_rules が空なら作り直す).
+ *
+ * その場で flush_rewrite_rules() しないのは, switch_to_blog() で別のサイトに切り替えても
+ * $wp_rewrite(パーマリンク構造や, 登録済みの投稿タイプのルール)は切り替わらないため
+ * (ms-blogs.php の switch_to_blog() は $wp_rewrite を作り直さない).
+ * その場で作ると, 今のサイトの設定で別のサイトのルールを作ってしまう.
+ *
+ * @return void
+ */
+function l2ddrcr_reset_site_rules() {
+	delete_option( 'rewrite_rules' );
+	delete_option( L2DDRCR_STATE_OPTION );
+}
+
+/**
+ * 有効化・無効化の対象になったサイトで, リライトルールと記録を消す.
+ *
+ * ネットワーク有効化・無効化のときは, ネットワーク内のすべてのサイトが対象.
+ * 有効化・無効化のフックは操作したサイトでしか呼ばれないので, ここで全サイトを回る.
+ * 回らないと, 他のサイトには古いルールが残る
+ * (2026-11-26, wp-env のマルチサイトで確認. 有効化後も /site2/random/ がホームを表示した).
+ *
+ * サイト数がとても多いネットワークでの処理時間は未実測.
+ *
+ * @param bool $network_wide ネットワーク有効化・無効化なら true.
+ * @return void
+ */
+function l2ddrcr_reset_rules( $network_wide ) {
+	if ( ! is_multisite() || ! $network_wide ) {
+		l2ddrcr_reset_site_rules();
+		return;
+	}
+
+	// number を 0 にすると件数の上限が外れる(class-wp-site-query.php. 既定は 100 件).
+	$site_ids = get_sites(
+		array(
+			'fields'     => 'ids',
+			'number'     => 0,
+			'network_id' => get_current_network_id(),
+		)
+	);
+
+	foreach ( $site_ids as $site_id ) {
+		switch_to_blog( $site_id );
+		l2ddrcr_reset_site_rules();
+		restore_current_blog();
+	}
+}
+
+/**
+ * 有効化したときに, リライトルールを消して, 作り直させる.
+ *
+ * 消したルールは, 各サイトへの次のアクセスで作り直される.
+ * そのときはこのプラグインが読み込まれているので, /random/ のルールが無い状態で作られる.
+ * 記録も消すので, l2ddrcr_maybe_refresh_rules() も一度だけ作り直して記録する.
+ *
+ * @param bool $network_wide ネットワーク有効化なら true.
+ * @return void
+ */
+function l2ddrcr_activate( $network_wide = false ) {
+	if ( ! l2ddrcr_is_supported() ) {
+		return;
+	}
+
+	l2ddrcr_reset_rules( (bool) $network_wide );
 }
 register_activation_hook( __FILE__, 'l2ddrcr_activate' );
 
 /**
- * 無効化したときに, リライトルールを作り直す.
+ * 無効化したときに, リライトルールを消して, 作り直させる.
+ *
+ * 次のアクセスからはこのプラグインが読み込まれないので, コアの /random/ のルールが戻る.
+ * 記録も消す. 消さないと, また有効化したときに「記録どおり」と判断されて,
+ * コアのルールが残ったままになる.
  *
  * 無効化のフックが呼ばれる時点では, まだ l2ddrcr_filter_enable() が登録されている.
- * そのまま作り直すと /random/ のルールが無いままになるので, 先にフィルターを外す.
+ * このリクエストの中でルールが作り直された場合に, 無効化したルールが保存されないよう,
+ * フィルターも外しておく.
  *
+ * @param bool $network_wide ネットワーク無効化なら true.
  * @return void
  */
-function l2ddrcr_deactivate() {
+function l2ddrcr_deactivate( $network_wide = false ) {
 	if ( ! l2ddrcr_is_supported() ) {
 		return;
 	}
 
 	remove_filter( 'wp_enable_random_content_redirect', 'l2ddrcr_filter_enable' );
-	flush_rewrite_rules( false );
+	remove_action( 'wp_loaded', 'l2ddrcr_maybe_refresh_rules' );
+	l2ddrcr_reset_rules( (bool) $network_wide );
 }
 register_deactivation_hook( __FILE__, 'l2ddrcr_deactivate' );
