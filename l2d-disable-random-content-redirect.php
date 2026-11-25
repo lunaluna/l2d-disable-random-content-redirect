@@ -1,9 +1,13 @@
 <?php
 /**
  * Plugin Name:       L2D disable random content redirect
+ * Plugin URI:        https://github.com/lunaluna/l2d-disable-random-content-redirect
  * Description:       WordPress 7.2 で追加された /random/ などのランダムな投稿へのリダイレクトを無効化します.
  * Version:           0.1.0
- * Author:            lunaluna
+ * Tested up to:      7.2
+ * Author:            lunaluna_dev
+ * Author URI:        https://profiles.wordpress.org/lunaluna_dev/
+ * Update URI:        false
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       l2d-disable-random-content-redirect
@@ -57,3 +61,56 @@ function l2ddrcr_filter_enable( $enabled ) {
 	return (bool) $enabled;
 }
 add_filter( 'wp_enable_random_content_redirect', 'l2ddrcr_filter_enable' );
+
+/**
+ * この WordPress にランダムな投稿へのリダイレクトの機能があるかを返す.
+ *
+ * バージョン番号では判定しない. version_compare( '7.2-RC3', '7.2', '>=' ) は false になり,
+ * RC や beta で機能があっても「ない」と判定してしまうため.
+ * 代わりに, 7.2 で追加された関数があるかを見る.
+ *
+ * @return bool 機能があるなら true.
+ */
+function l2ddrcr_is_supported() {
+	return function_exists( 'wp_is_random_content_redirect_enabled' );
+}
+
+/**
+ * 有効化したときに, リライトルールを作り直す.
+ *
+ * /random/ のルールは rewrite_rules オプションに保存されているので,
+ * フィルターを付けただけでは消えない. ここで作り直して, ルールを消す.
+ *
+ * 有効化のときは, このファイルを読み込んでからフックが呼ばれるので,
+ * 作り直す時点で l2ddrcr_filter_enable() は登録済み(wp-admin/includes/plugin.php の activate_plugin()).
+ * .htaccess は変わらないので, ソフトフラッシュ(false)でよい.
+ *
+ * @return void
+ */
+function l2ddrcr_activate() {
+	// 7.2 未満には /random/ のルールが無いので, 作り直す必要がない.
+	if ( ! l2ddrcr_is_supported() ) {
+		return;
+	}
+
+	flush_rewrite_rules( false );
+}
+register_activation_hook( __FILE__, 'l2ddrcr_activate' );
+
+/**
+ * 無効化したときに, リライトルールを作り直す.
+ *
+ * 無効化のフックが呼ばれる時点では, まだ l2ddrcr_filter_enable() が登録されている.
+ * そのまま作り直すと /random/ のルールが無いままになるので, 先にフィルターを外す.
+ *
+ * @return void
+ */
+function l2ddrcr_deactivate() {
+	if ( ! l2ddrcr_is_supported() ) {
+		return;
+	}
+
+	remove_filter( 'wp_enable_random_content_redirect', 'l2ddrcr_filter_enable' );
+	flush_rewrite_rules( false );
+}
+register_deactivation_hook( __FILE__, 'l2ddrcr_deactivate' );
