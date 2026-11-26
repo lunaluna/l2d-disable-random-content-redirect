@@ -3,7 +3,7 @@
  * Plugin Name:       L2D disable random content redirect
  * Plugin URI:        https://github.com/lunaluna/l2d-disable-random-content-redirect
  * Description:       WordPress 7.2 で追加された /random/ などのランダムな投稿へのリダイレクトを無効化します.
- * Version:           0.1.0
+ * Version:           1.0.0
  * Tested up to:      7.2
  * Author:            lunaluna_dev
  * Author URI:        https://profiles.wordpress.org/lunaluna_dev/
