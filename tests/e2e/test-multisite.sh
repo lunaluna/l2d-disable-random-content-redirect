@@ -84,15 +84,21 @@ for s in main site2 site3 site4; do ST "M6-直後 $s" "$(URL $s)" 0 none; done
 for s in main site2 site3 site4; do SITE "M6-$s" $s 302 302; done
 for s in main site2 site3 site4; do ST "M6-後 $s" "$(URL $s)" 5 none; done
 
-H "M7 site2 だけで有効化 → 無効化"
+H "M7 site2 から有効化しようとしても, ネットワーク単位の有効化になる(ヘッダーの Network: true)"
 W --url="$(URL site2)" plugin activate $PLUGIN_SLUG
+STATUS=$(W plugin list --name=$PLUGIN_SLUG --field=status)
+if [ "$STATUS" = "active-network" ]; then
+	echo "PASS M7          プラグインの状態 期待 active-network 結果 $STATUS"
+else
+	echo "FAIL M7          プラグインの状態 期待 active-network 結果 $STATUS"
+	FAILS=$((FAILS + 1))
+fi
 SITE M7-site2 site2 404 200
-SITE M7-main main 302 302
-ST "M7 site2" "$(URL site2)" 0 disabled
-ST "M7 main" "$(URL main)" 5 none
-W --url="$(URL site2)" plugin deactivate $PLUGIN_SLUG
-SITE M7-site2戻す site2 302 302
-ST "M7-戻す site2" "$(URL site2)" 5 none
+SITE M7-main main 404 200
+SITE M7-site3 site3 404 200
+W plugin deactivate $PLUGIN_SLUG --network
+SITE M7-無効化 site2 302 302
+SITE M7-無効化 main 302 302
 
 H "M8 debug.log"
 DEBUG_LOG

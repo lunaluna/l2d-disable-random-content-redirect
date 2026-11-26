@@ -185,6 +185,10 @@ function l2ddrcr_reset_site_rules() {
  *
  * サイト数がとても多いネットワークでの処理時間は未実測.
  *
+ * ヘッダーに Network: true を付けているので, マルチサイトでは $network_wide は通常 true になる
+ * (activate_plugin() は Network: true のプラグインを必ずネットワーク単位で有効化する).
+ * $network_wide が false の分かれ道は, シングルサイトのためのもの.
+ *
  * @param bool $network_wide ネットワーク有効化・無効化なら true.
  * @return void
  */
