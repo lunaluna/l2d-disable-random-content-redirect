@@ -5,6 +5,7 @@
  * Description:       WordPress 7.2 で追加された /random/ などのランダムな投稿へのリダイレクトを無効化します.
  * Version:           1.0.0
  * Tested up to:      7.2
+ * Network:           true
  * Author:            lunaluna_dev
  * Author URI:        https://profiles.wordpress.org/lunaluna_dev/
  * Update URI:        false
