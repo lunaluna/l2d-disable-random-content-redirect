@@ -28,7 +28,9 @@ defined( 'ABSPATH' ) || exit;
 /**
  * どの状態でリライトルールを作ったかを記録するオプションの名前.
  *
- * 値は 'disabled'(無効化した状態で作った)か 'enabled'(コアの挙動のまま作った).
+ * 値は 'disabled'(ランダムな投稿へのリダイレクトが無効な状態で作った)か
+ * 'enabled'(有効な状態で作った). どちらも, このプラグインの設定ではなく,
+ * コアの wp_is_random_content_redirect_enabled() の最終結果で決める.
  * サイトごとに持つ. l2ddrcr_maybe_refresh_rules() が今の状態と比べて,
  * 違えばルールを作り直す.
  */
@@ -38,7 +40,8 @@ const L2DDRCR_STATE_OPTION = 'l2ddrcr_rules_state';
  * このプラグインで無効化するかを返す.
  *
  * 独自フィルター l2ddrcr_disable_random_redirect の値で決める.
- * l2ddrcr_filter_enable() と l2ddrcr_maybe_refresh_rules() の両方で使うので, ここにまとめる.
+ * これは「このプラグインが無効化しようとするか」であり, 最終的に無効になるかではない.
+ * 最終的な値は, ほかのプラグインも参加するコアのフィルターで決まる(l2ddrcr_maybe_refresh_rules() を参照).
  *
  * @return bool 無効化するなら true.
  */
@@ -49,6 +52,9 @@ function l2ddrcr_should_disable() {
 	 * サイト側で false を返すと, このプラグインは何もせず, コアの挙動に戻る.
 	 * 値を変えると, 次のアクセスでリライトルールが自動で作り直される
 	 * (l2ddrcr_maybe_refresh_rules()).
+	 *
+	 * なお, このプラグインより後の優先度でほかのプラグインが wp_enable_random_content_redirect に
+	 * true を返すと, そちらが勝つ(このプラグインは優先度 10 で登録している).
 	 *
 	 * リクエストによって変わる値(ログインしているか, 管理画面か など)を返してはいけない.
 	 * 値が変わるたびにルールを作り直すので, 毎回のアクセスで作り直しが起きてしまう.
@@ -108,7 +114,15 @@ function l2ddrcr_is_supported() {
  * - 有効化した直後(記録が無い).
  * - マルチサイトでネットワーク有効化したあとの各サイト(記録が無い).
  * - 独自フィルター l2ddrcr_disable_random_redirect の値を変えたとき.
+ * - ほかのプラグインが wp_enable_random_content_redirect の値を変えたとき
+ *   (そのプラグインを入れた・外した・設定を変えた など).
  * - WordPress を 7.2 に上げたとき(7.2 未満では記録しないので, 記録が無い).
+ *
+ * 状態は, 独自フィルターの値ではなく wp_is_random_content_redirect_enabled() の最終結果で決める.
+ * ルールを作るとき(class-wp-rewrite.php の random_rewrite_rules())も同じ関数を見るので,
+ * 記録とルールが必ず同じ値にもとづく. 独自フィルターの値で決めていたときは,
+ * ほかのプラグインがコアのフィルターで false を返していると, 実際は無効なのに 'enabled' と記録し,
+ * そのプラグインを外したあとも作り直しが起きなかった(2026-11-26 のレビューの指摘 1).
  *
  * ルールの中身(random=1 のルールがあるか)では判定しない. 他のプラグインが
  * random_rewrite_rules フィルターで random のルールを空にしていると,
@@ -127,7 +141,7 @@ function l2ddrcr_maybe_refresh_rules() {
 		return;
 	}
 
-	$state = l2ddrcr_should_disable() ? 'disabled' : 'enabled';
+	$state = wp_is_random_content_redirect_enabled() ? 'enabled' : 'disabled';
 
 	if ( get_option( L2DDRCR_STATE_OPTION ) === $state ) {
 		return;
