@@ -1,0 +1,80 @@
+name: CI
+
+# PHP のチェック. main への push と PR で動く.
+#
+# Actions はコミットの SHA で固定し, バージョンをコメントに書く
+# (get-patterns-by-pattern-name などほかのプラグインの CI と同じ SHA).
+#
+# PHPUnit(tests/phpunit)と HTTP の通しテスト(tests/e2e)は, ここでは動かさない.
+# どちらも WordPress 7.2 以降と wp-env(Docker)が要り, 2026-11-26 時点では
+# 7.2 が正式に公開されていないため(README の「テスト」の手順で手元で実行する).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: PHP の構文チェック (PHP ${{ matrix.php }})
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        # WordPress 7.2 が求める PHP の下限(7.4)と, 新しい版.
+        php: ['7.4', '8.4']
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: php -l
+        run: |
+          # vendor など依存物は対象外. 1 つでも失敗したら止める.
+          find . -name '*.php' -not -path './vendor/*' -not -path './.git/*' -print0 \
+            | xargs -0 -n1 php -l
+
+  phpcs:
+    name: PHPCS (WordPress)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '7.4'
+          coverage: none
+      - uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # 4.0.0
+      # 設定は phpcs.xml.dist.
+      - run: vendor/bin/phpcs
+
+  phpcompatibility:
+    name: PHPCompatibilityWP (PHP 7.4 以降)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '7.4'
+          coverage: none
+      - uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # 4.0.0
+      - run: vendor/bin/phpcs --standard=PHPCompatibilityWP --runtime-set testVersion 7.4- --extensions=php --ignore='*/vendor/*' .
+
+  shell:
+    name: シェルスクリプトの構文チェック
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: bash -n
+        run: |
+          for f in bin/*.sh tests/e2e/*.sh; do
+            echo "bash -n $f"
+            bash -n "$f"
+          done
+      - name: 配布用 ZIP を作れるか
+        run: |
+          # リポジトリ名がスラッグになるので, そのままのディレクトリ名で実行する.
+          bash bin/build-zip.sh
+          unzip -Z1 ./*.zip

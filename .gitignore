@@ -1,4 +1,8 @@
 .DS_Store
 .phpunit.result.cache
+# composer install で入る開発用の依存.
+/vendor/
+# bin/build-zip.sh が作る配布用の ZIP.
+/*.zip
 # 手元のレビューなどのメモ. リポジトリには入れない.
 .md/

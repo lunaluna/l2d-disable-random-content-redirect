@@ -104,6 +104,39 @@ add_filter( 'l2ddrcr_disable_random_redirect', '__return_false' );
 
 - **サイト数がとても多いネットワークでの、ネットワーク有効化・無効化の処理時間。** ネットワークで有効化・無効化すると、すべてのサイトを順に切り替えてリライトルールと記録を消します(`get_sites()` で全サイトの ID を一度に取得)。サイト数が多いと、PHP の最大実行時間を超えたり、途中で止まって一部のサイトだけ処理された状態になったりする可能性があります。現状は子サイトが 100 を超える使い方を想定していないため対応していません。必要になったら、想定する最大のサイト数で処理時間を測り、サイトを分けて取得・処理する方法などを検討します。
 
+## 開発
+
+### コーディング規約のチェック
+
+PHPCS(WordPress Coding Standards)と PHPCompatibilityWP を Composer の開発用の依存で入れています。設定は `phpcs.xml.dist` です。
+
+```sh
+composer install
+composer lint                # PHPCS(WordPress)
+vendor/bin/phpcs --standard=PHPCompatibilityWP --runtime-set testVersion 7.4- --extensions=php --ignore='*/vendor/*' .
+```
+
+### CI(GitHub Actions)
+
+`.github/workflows/ci.yml` が、main への push と PR で次をチェックします。
+
+- PHP の構文チェック(PHP 7.4 と 8.4)
+- PHPCS(WordPress)
+- PHPCompatibilityWP(PHP 7.4 以降)
+- シェルスクリプトの構文チェックと、配布用の ZIP を作れるか
+
+PHPUnit と HTTP の通しテストは、WordPress 7.2 以降と wp-env(Docker)が要るため、CI では動かしていません。下の「テスト」の手順で手元で実行してください。
+
+### リリース
+
+1. プラグインのヘッダーの `Version:` と、この README の「バージョン」を新しいバージョンにする
+2. `CHANGELOG.md` に `## [x.y.z] - 日付` の節を書く(この節がリリースノートになる)
+3. main にマージしてから、**`v` を付けない**タグ(例: `1.0.0`)を push する
+4. `.github/workflows/release.yml` が配布用の ZIP を作り、**下書き(draft)**の GitHub Release を作る
+5. Release に添付された ZIP の中身を確かめてから、`gh release edit <タグ> --draft=false` で公開する
+
+配布用の ZIP は、手元でも `bash bin/build-zip.sh` で作れます。ZIP に入れないファイルは `.distignore` に書きます。リリースのワークフローは [lunaluna/l2d-wp-github-update-lib](https://github.com/lunaluna/l2d-wp-github-update-lib) の再利用ワークフロー(`plugin-release.yml` 1.3.1)を使っています。
+
 ## テスト
 
 wp-env(Docker)を使います。動作確認したのは wp-env 8.4.0 です。

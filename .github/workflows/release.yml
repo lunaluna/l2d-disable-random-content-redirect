@@ -1,0 +1,42 @@
+name: Release
+
+# タグを push すると, 配布用の ZIP を作って GitHub Release を作る.
+#
+# lunaluna/l2d-wp-github-update-lib の再利用ワークフロー(plugin-release.yml)を呼ぶ.
+# 呼び出し先は次の順に処理する(1.3.1 で確認).
+#   1. タグとバージョンファイル(version_files)の表記が一致するかを確かめる
+#   2. bin/build-zip.sh で ZIP を作り, 開発用のファイルが入っていないかを検査する
+#   3. CHANGELOG.md の "## [x.y.z]" の節をリリースノートにする
+#   4. Release を作り, ZIP を添付する
+#
+# タグに v を付けない(1.0.0 / 1.1.0 ...). タグの絞り込みも数字で始まるものだけにしている.
+
+on:
+  push:
+    tags: ['[0-9]*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'リリースするタグ (例 1.0.0).'
+        required: true
+
+# 呼び出し先の GITHUB_TOKEN の権限は呼び出し元を超えられないため,
+# Release の作成に必要な contents: write はここで与える.
+permissions:
+  contents: write
+
+jobs:
+  release:
+    uses: lunaluna/l2d-wp-github-update-lib/.github/workflows/plugin-release.yml@1.3.1
+    with:
+      slug: l2d-disable-random-content-redirect
+      # "path:pattern" の形. pattern は grep -E の正規表現として使われる.
+      # 行頭の違いに左右されないよう, アンカー(^)は付けない.
+      version_files: |
+        l2d-disable-random-content-redirect.php:Version:
+        README.md:バージョン:
+      # "## [x.y.z]" の節が無いと "Release x.y.z." の 1 行になるので, リリースの前に必ず書く.
+      notes_source: CHANGELOG.md
+      # 公開せずに draft の Release を作る. ZIP の中身を確かめてから
+      # `gh release edit <タグ> --draft=false` で公開する.
+      draft: true
