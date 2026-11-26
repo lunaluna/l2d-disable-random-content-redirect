@@ -1,0 +1,20 @@
+# 配布用の ZIP に入れないファイル(bin/build-zip.sh が rsync の除外に使う).
+# 1 行に 1 つ. # で始まる行と空行は読み飛ばす.
+.git
+.github
+.gitignore
+.distignore
+.claude
+.md
+.DS_Store
+bin
+tests
+vendor
+composer.json
+composer.lock
+phpcs.xml.dist
+phpunit.xml.dist
+phpunit-multisite.xml.dist
+.phpunit.result.cache
+*.zip
+release-notes.txt
