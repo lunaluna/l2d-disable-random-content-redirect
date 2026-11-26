@@ -4,7 +4,7 @@ WordPress 7.2 で追加された「ランダムな投稿へのリダイレクト
 
 - バージョン: 0.1.0
 - プラグインのスラッグ: `l2d-disable-random-content-redirect`
-- 動作確認: WordPress 7.2-RC3(シングルサイト・サブディレクトリ型のマルチサイト)、7.1.5(シングルサイト)。いずれも wp-env
+- 動作確認: WordPress 7.2-RC3(シングルサイト・サブディレクトリ型とサブドメイン型のマルチサイト)、7.1.5(シングルサイト)。いずれも wp-env
 
 ## 何をするか
 
@@ -91,7 +91,6 @@ add_filter( 'l2ddrcr_disable_random_redirect', '__return_false' );
   - 確認したパーマリンク構造は `/%postname%/` だけです。
 - `random` は公開クエリ変数のまま残ります。このため `/category/news/?random` では、リダイレクトはされませんが、`is_random()` は `true` を返します。`is_random()` で表示を分けているテーマやプラグインがあれば、確認してください。
 - ほかのプラグインが `random_rewrite_rules` フィルターで `/random/` のルールを足した場合、ルールには一致しますが、リダイレクトはされません。
-- サブドメイン型のマルチサイトでは確認していません。
 
 ## 参考
 
