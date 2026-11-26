@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<ruleset name="L2D disable random content redirect">
+	<description>L2D disable random content redirect のコーディング規約.</description>
+
+	<file>.</file>
+	<exclude-pattern>/vendor/*</exclude-pattern>
+	<exclude-pattern>/node_modules/*</exclude-pattern>
+	<!-- 手元のメモ. Git の管理から外している. -->
+	<exclude-pattern>/.md/*</exclude-pattern>
+
+	<arg value="sp"/>
+	<arg name="basepath" value="./"/>
+	<arg name="colors"/>
+	<arg name="extensions" value="php"/>
+	<arg name="parallel" value="8"/>
+
+	<rule ref="WordPress"/>
+
+	<!-- WordPress 7.2 の機能を止めるプラグインなので, 7.2 を下限にする. -->
+	<config name="minimum_supported_wp_version" value="7.2"/>
+
+	<!-- グローバルな関数・定数・クラスの名前は, この接頭辞で始める. -->
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+		<properties>
+			<property name="prefixes" type="array">
+				<element value="l2ddrcr"/>
+			</property>
+		</properties>
+	</rule>
+</ruleset>

@@ -29,7 +29,8 @@ if ( ! defined( 'WP_TESTS_PHPUNIT_POLYFILLS_PATH' ) ) {
 	if ( ! $l2ddrcr_polyfills ) {
 		$l2ddrcr_polyfills = getenv( 'HOME' ) . '/.composer/vendor/yoast/phpunit-polyfills';
 	}
-	define( 'WP_TESTS_PHPUNIT_POLYFILLS_PATH', $l2ddrcr_polyfills );
+	// 定数の名前はコアのテスト用ライブラリ(includes/bootstrap.php)が決めているので, 接頭辞を付けられない.
+	define( 'WP_TESTS_PHPUNIT_POLYFILLS_PATH', $l2ddrcr_polyfills ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound
 }
 
 require_once $l2ddrcr_tests_dir . '/includes/functions.php';
@@ -50,4 +51,4 @@ tests_add_filter( 'muplugins_loaded', 'l2ddrcr_tests_load_plugin' );
 require $l2ddrcr_tests_dir . '/includes/bootstrap.php';
 
 // テストの共通部分. WP_UnitTestCase を継承するので, WordPress のテストの起動処理のあとに読む.
-require __DIR__ . '/includes/class-test-l2ddrcr-base.php';
+require __DIR__ . '/includes/class-l2ddrcr-test-base.php';

@@ -14,7 +14,7 @@
  *
  * @group ms-required
  */
-class Test_L2DDRCR_Multisite extends Test_L2DDRCR_Base {
+class L2DDRCR_Test_Multisite extends L2DDRCR_Test_Base {
 
 	/**
 	 * テスト用に作るサイトの ID.

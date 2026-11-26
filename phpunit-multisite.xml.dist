@@ -21,7 +21,7 @@
 	</php>
 	<testsuites>
 		<testsuite name="l2ddrcr">
-			<directory prefix="class-test-" suffix=".php">tests/phpunit/tests</directory>
+			<directory prefix="class-l2ddrcr-test-" suffix=".php">tests/phpunit/tests</directory>
 		</testsuite>
 	</testsuites>
 </phpunit>

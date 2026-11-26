@@ -10,7 +10,7 @@
 /**
  * プラグインの基本の動作を確かめる.
  */
-class Test_L2DDRCR_Rules extends Test_L2DDRCR_Base {
+class L2DDRCR_Test_Rules extends L2DDRCR_Test_Base {
 
 	/**
 	 * 既定では, ランダムな投稿へのリダイレクトが無効になる.

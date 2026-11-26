@@ -8,7 +8,7 @@
 /**
  * テストの共通の準備と, ルールを調べるための関数をまとめる.
  */
-abstract class Test_L2DDRCR_Base extends WP_UnitTestCase {
+abstract class L2DDRCR_Test_Base extends WP_UnitTestCase {
 
 	/**
 	 * ルールを作った回数. generate_rewrite_rules アクションで数える.
