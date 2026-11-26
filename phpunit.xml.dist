@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<!--
+	シングルサイトでの PHPUnit の設定.
+	wp-env の tests-cli コンテナで動かす(使い方は README の「テスト」).
+-->
+<phpunit
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.6/phpunit.xsd"
+	bootstrap="tests/phpunit/bootstrap.php"
+	backupGlobals="false"
+	colors="true"
+	beStrictAboutTestsThatDoNotTestAnything="true"
+	convertErrorsToExceptions="true"
+	convertWarningsToExceptions="true"
+	convertNoticesToExceptions="true"
+	convertDeprecationsToExceptions="true"
+	>
+	<testsuites>
+		<testsuite name="l2ddrcr">
+			<directory prefix="class-test-" suffix=".php">tests/phpunit/tests</directory>
+		</testsuite>
+	</testsuites>
+</phpunit>
